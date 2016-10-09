@@ -54,17 +54,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     LatLng localPosition;
     private LocationManager locationManager;
     private String provider;
-    public int CurrentRole=0; /* Role User (0) or Agent (1) */
-    public int AgentId=1;   /* Agent ID 1 or 2 */
-    public int UserId = 1;
-    public int call_action_flag=0;
+
+    private int m_CurrentRole = 0; /* Role User (0) or Agent (1) */
+    private int m_AgentId = 1;   /* Agent ID 1 or 2 */
+    private int m_UserId = 1;
+    private int m_CallActionFlag = 0;
+    private int m_OnlineFlag = 0;
     List<AgentPos> ShieldPlacement = null;
     Button button_left;
-    Button button_right;
-
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
         super.onCreateOptionsMenu(menu);
 
         MenuInflater inflater = getMenuInflater();
@@ -73,24 +74,24 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
         // Handle item selection
-        switch (item.getItemId()) {
+        switch (item.getItemId())
+        {
             case R.id.menu_user:
-                CurrentRole = 0;
-                mTcpClient.setCurrentRole(CurrentRole);
+                m_CurrentRole = 0;
+                mTcpClient.setCurrentRole(m_CurrentRole);
                 button_left.setText("Call Agent");
-                button_right.setText("Place Holder");
-                AgentId = 0; //this means I am a user
+                m_AgentId = 0; //this means I am a user
                 setTitle("SAfer User");
                 return true;
             case R.id.menu_agent:
-                CurrentRole = 1;
-                mTcpClient.setCurrentRole(CurrentRole);
-                button_left.setText("Accept Call");
-                button_right.setText("Go Online");
-                AgentId = 1; //default to agent 1
-                setTitle("SAfer Agent "+Integer.toString(AgentId));
+                m_CurrentRole = 1;
+                mTcpClient.setCurrentRole(m_CurrentRole);
+                button_left.setText("Go Online");
+                m_AgentId = 1; //default to agent 1
+                setTitle("SAfer Agent " + Integer.toString(m_AgentId));
                 return true;
             case R.id.menu_agent_id:
                 // custom dialog
@@ -104,12 +105,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 Button dialogButton = (Button) dialog.findViewById(R.id.dialogButtonOK);
                 // if button is clicked, close the custom dialog
-                dialogButton.setOnClickListener(new View.OnClickListener() {
+                dialogButton.setOnClickListener(new View.OnClickListener()
+                {
                     @Override
-                    public void onClick(View v) {
-                        EditText agentIDText=(EditText)dialog.findViewById(R.id.editText);
-                        AgentId = Integer.parseInt(agentIDText.getText().toString());
-                        setTitle("SAfer Agent "+Integer.toString(AgentId));
+                    public void onClick(View v)
+                    {
+                        EditText agentIDText = (EditText) dialog.findViewById(R.id.editText);
+                        m_AgentId = Integer.parseInt(agentIDText.getText().toString());
+                        setTitle("SAfer Agent " + Integer.toString(m_AgentId));
                         dialog.dismiss();
                     }
                 });
@@ -127,12 +130,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 Button dialogButton_user = (Button) dialog_user.findViewById(R.id.dialogButtonOK);
                 // if button is clicked, close the custom dialog
-                dialogButton_user.setOnClickListener(new View.OnClickListener() {
+                dialogButton_user.setOnClickListener(new View.OnClickListener()
+                {
                     @Override
-                    public void onClick(View v) {
-                        EditText agentIDText=(EditText)dialog_user.findViewById(R.id.editText);
-                        UserId = Integer.parseInt(agentIDText.getText().toString());
-                        setTitle("SAfer User "+Integer.toString(UserId));
+                    public void onClick(View v)
+                    {
+                        EditText agentIDText = (EditText) dialog_user.findViewById(R.id.editText);
+                        m_UserId = Integer.parseInt(agentIDText.getText().toString());
+                        setTitle("SAfer User " + Integer.toString(m_UserId));
                         dialog_user.dismiss();
                     }
                 });
@@ -144,6 +149,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return super.onOptionsItemSelected(item);
         }
     }
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -151,8 +157,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         setContentView(R.layout.activity_maps);
 
-        button_left = (Button)findViewById(R.id.button_left);
-        button_right = (Button)findViewById(R.id.button_right);
+        button_left = (Button) findViewById(R.id.button_left);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -166,35 +171,48 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         provider = locationManager.getBestProvider(criteria, false);
 
         //set button actions
-        button_left.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                if (CurrentRole == 0)
+        button_left.setOnClickListener(new View.OnClickListener()
+        {
+            public void onClick(View v)
+            {
+                if (m_CurrentRole == 0)
                 {
-                    call_action_flag = 1;
+                    m_CallActionFlag = 1;
+                }
+                else
+                {
+                    if (m_OnlineFlag == 1)
+                    {
+                        m_OnlineFlag = 0;
+                    }
+                    else
+                    {
+                        m_OnlineFlag = 1;
+                    }
+                    mTcpClient.setCallAction(m_OnlineFlag);
                 }
             }
         });
 
-        // API 23: we have to check if ACCESS_FINE_LOCATION and/or ACCESS_COARSE_LOCATION permission are granted
-//        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-//                || ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+
+        Location location = locationManager.getLastKnownLocation(provider);
+
+        // Initialize the location fields
+        if (location != null)
+        {
+            System.out.println("Provider " + provider + " has been selected.");
+            onLocationChanged(location);
+        }
+        else
         {
 
-            Location location = locationManager.getLastKnownLocation(provider);
-
-            // Initialize the location fields
-            if (location != null)
-            {
-                System.out.println("Provider " + provider + " has been selected.");
-                onLocationChanged(location);
-            } else
-            {
-
-            }
         }
 
-        h.postDelayed(new Runnable(){
-            public void run(){
+
+        h.postDelayed(new Runnable()
+        {
+            public void run()
+            {
                 if ((mTcpClient != null) && (localPosition != null))
                 {
                     latitude_data = localPosition.latitude;
@@ -202,13 +220,23 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     LatLng carmarker = new LatLng(latitude_data, longitude_data);
                     mMap.clear();
                     mMap.addMarker(new MarkerOptions().position(carmarker).title("My Location"));
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(carmarker,16.0f));
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(carmarker, 16.0f));
                     if (ShieldPlacement != null)
                     {
-                        int shield_idx=0;
+                        int shield_idx = 0;
                         for (shield_idx = 0; shield_idx < ShieldPlacement.size(); shield_idx++)
                         {
-                            if (ShieldPlacement.get(shield_idx).GetRespondingState())
+                            if (!ShieldPlacement.get(shield_idx).GetRespondingState())
+                            {
+                                mMap.addMarker(new MarkerOptions()
+                                        .position(ShieldPlacement.get(shield_idx).GetAgentPos())
+                                        .title("Shield " + Integer.toString(ShieldPlacement.get(shield_idx).GetAgentID()))
+                                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.shield))
+                                );
+
+                            }
+                            else if ((ShieldPlacement.get(shield_idx).GetUserThatCalled() == m_UserId) &&
+                                     (ShieldPlacement.get(shield_idx).GetRespondingState()))
                             {
                                 mMap.addMarker(new MarkerOptions()
                                         .position(ShieldPlacement.get(shield_idx).GetAgentPos())
@@ -216,27 +244,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         .icon(BitmapDescriptorFactory.fromResource(R.drawable.shield_respond))
                                 );
                             }
-                            else
-                            {
-                                mMap.addMarker(new MarkerOptions()
-                                        .position(ShieldPlacement.get(shield_idx).GetAgentPos())
-                                        .title("Shield " + Integer.toString(ShieldPlacement.get(shield_idx).GetAgentID()))
-                                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.shield))
-                                );
-                            }
                         }
                     }
                 }
                 new connectTask().execute("");
 
-                if ((ShieldPlacement != null)&&(CurrentRole == 1))
+                if ((ShieldPlacement != null) && (m_CurrentRole == 1))
                 {
                     int shield_idx = 0;
                     for (shield_idx = 0; shield_idx < ShieldPlacement.size(); shield_idx++)
                     {
-                        if (ShieldPlacement.get(shield_idx).GetRespondingState() && (ShieldPlacement.get(shield_idx).GetAgentID() == AgentId))
+                        if (ShieldPlacement.get(shield_idx).GetRespondingState() && (ShieldPlacement.get(shield_idx).GetAgentID() == m_AgentId))
                         {
-                            Toast.makeText(getBaseContext(), "You have been called!!",Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getBaseContext(), "You have been called!!", Toast.LENGTH_SHORT).show();
                         }
                     }
                 }
@@ -245,39 +265,43 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }, delay);
     }
 
-    public class connectTask extends AsyncTask<String,String,TCPClient>
+    public class connectTask extends AsyncTask<String, String, TCPClient>
     {
         @Override
-        protected TCPClient doInBackground(String... message) {
+        protected TCPClient doInBackground(String... message)
+        {
 
             //we create a TCPClient object and
-            mTcpClient = new TCPClient(new TCPClient.OnMessageReceived() {
+            mTcpClient = new TCPClient(new TCPClient.OnMessageReceived()
+            {
                 @Override
                 //here the messageReceived method is implemented
-                public void messageReceived(String message) {
+                public void messageReceived(String message)
+                {
                     //this method calls the onProgressUpdate
                     publishProgress(message);
                 }
             });
             LatLng carmarker = new LatLng(latitude_data, longitude_data);
-            mTcpClient.setCurrentRole(CurrentRole);
-            if (CurrentRole == 0)
+            mTcpClient.setCurrentRole(m_CurrentRole);
+            if (m_CurrentRole == 0)
             {
-                mTcpClient.setCoordinates(carmarker, UserId);
+                mTcpClient.setCoordinates(carmarker, m_UserId);
             }
             else
             {
-                mTcpClient.setCoordinates(carmarker, AgentId);
+                mTcpClient.setCoordinates(carmarker, m_AgentId);
             }
-            mTcpClient.setCallAction(call_action_flag);
-            call_action_flag = 0;
+            mTcpClient.setCallAction(m_CallActionFlag);
+            m_CallActionFlag = 0;
             mTcpClient.run();
 
             return null;
         }
 
         @Override
-        protected void onProgressUpdate(String... values) {
+        protected void onProgressUpdate(String... values)
+        {
             super.onProgressUpdate(values);
             XMLPullParseHandler parser = new XMLPullParseHandler();
 
@@ -289,6 +313,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             ShieldPlacement = parser.parse(stream);
         }
     }
+
     /**
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
@@ -310,20 +335,23 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
-    public void onProviderEnabled(String provider) {
+    public void onProviderEnabled(String provider)
+    {
         Toast.makeText(this, "Enabled new provider " + provider,
                 Toast.LENGTH_SHORT).show();
     }
 
     @Override
-    public void onProviderDisabled(String provider) {
+    public void onProviderDisabled(String provider)
+    {
         Toast.makeText(this, "Disabled provider " + provider,
                 Toast.LENGTH_SHORT).show();
     }
 
     /* Request updates at startup */
     @Override
-    protected void onResume() {
+    protected void onResume()
+    {
         super.onResume();
 //        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 //                || ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
@@ -334,7 +362,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     /* Remove the locationlistener updates when Activity is paused */
     @Override
-    protected void onPause() {
+    protected void onPause()
+    {
         super.onPause();
         //if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         //        || ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
@@ -344,8 +373,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
-    public void onLocationChanged(Location location) {
-        localPosition = new LatLng(location.getLatitude(),location.getLongitude());
+    public void onLocationChanged(Location location)
+    {
+        localPosition = new LatLng(location.getLatitude(), location.getLongitude());
         String longitude = "Longitude: " + location.getLongitude();
         Log.e("Long: ", longitude);
         String latitude = "Latitude: " + location.getLatitude();
@@ -353,10 +383,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
+    public void onStatusChanged(String provider, int status, Bundle extras)
+    {
         // TODO Auto-generated method stub
 
     }
-
 }
 

@@ -22,18 +22,22 @@ public class XMLPullParseHandler
     private int MessageFrom = NO_MESSAGE_TYPE;
     private String text;
 
-    public XMLPullParseHandler() {
+    public XMLPullParseHandler()
+    {
         agent_pos_list = new ArrayList<AgentPos>();
     }
 
-    public List<AgentPos> getEmployees() {
+    public List<AgentPos> getEmployees()
+    {
         return agent_pos_list;
     }
 
-    public List<AgentPos> parse(InputStream is) {
+    public List<AgentPos> parse(InputStream is)
+    {
         XmlPullParserFactory factory = null;
         XmlPullParser parser = null;
-        try {
+        try
+        {
             factory = XmlPullParserFactory.newInstance();
             factory.setNamespaceAware(true);
             parser = factory.newPullParser();
@@ -41,15 +45,20 @@ public class XMLPullParseHandler
             parser.setInput(is, null);
 
             int eventType = parser.getEventType();
-            while (eventType != XmlPullParser.END_DOCUMENT) {
+            while (eventType != XmlPullParser.END_DOCUMENT)
+            {
                 String tagname = parser.getName();
-                switch (eventType) {
+                switch (eventType)
+                {
                     case XmlPullParser.START_TAG:
-                        if (tagname.equalsIgnoreCase("agent_data")) {
+                        if (tagname.equalsIgnoreCase("agent_data"))
+                        {
                             MessageFrom = AGENT_MESSAGE_TYPE;
-                        }else if (tagname.equalsIgnoreCase("user_data")) {
+                        } else if (tagname.equalsIgnoreCase("user_data"))
+                        {
                             MessageFrom = USER_MESSAGE_TYPE;
-                        }else if (tagname.equalsIgnoreCase("agent_pos")) {
+                        } else if (tagname.equalsIgnoreCase("agent_pos"))
+                        {
                             agent_pos = new AgentPos();
                         }
                         break;
@@ -59,30 +68,37 @@ public class XMLPullParseHandler
                         break;
 
                     case XmlPullParser.END_TAG:
-                        if (tagname.equalsIgnoreCase("agent_pos")) {
+                        if (tagname.equalsIgnoreCase("agent_pos"))
+                        {
                             // add employee object to list
                             agent_pos_list.add(agent_pos);
-                        } else if (tagname.equalsIgnoreCase("agent_id")) {
+                        } else if (tagname.equalsIgnoreCase("agent_id"))
+                        {
                             agent_pos.SetAgentID(Integer.valueOf(text));
-                        } else if (tagname.equalsIgnoreCase("latitude")) {
+                        } else if (tagname.equalsIgnoreCase("latitude"))
+                        {
                             agent_pos.SetAgentLat(Double.valueOf(text));
-                        } else if (tagname.equalsIgnoreCase("longitude")) {
+                        } else if (tagname.equalsIgnoreCase("longitude"))
+                        {
                             agent_pos.SetAgentLong(Double.valueOf(text));
-                        } else if (tagname.equalsIgnoreCase("responding_status")) {
+                        } else if (tagname.equalsIgnoreCase("responding_status"))
+                        {
                             if (text.equals("1"))
                             {
                                 agent_pos.SetRespondingState(true);
-                            }
-                            else
+                            } else
                             {
                                 agent_pos.SetRespondingState(false);
                             }
-                        }  else if (tagname.equalsIgnoreCase("responding_to_user")) {
+                        } else if (tagname.equalsIgnoreCase("responding_to_user"))
+                        {
                             agent_pos.SetUserThatCalled(Integer.valueOf(text));
 
-                        }else if (tagname.equalsIgnoreCase("agent_data")) {
+                        } else if (tagname.equalsIgnoreCase("agent_data"))
+                        {
 
-                        }else if (tagname.equalsIgnoreCase("user_data")) {
+                        } else if (tagname.equalsIgnoreCase("user_data"))
+                        {
 
                         }
                         break;
@@ -93,9 +109,11 @@ public class XMLPullParseHandler
                 eventType = parser.next();
             }
 
-        } catch (XmlPullParserException e) {
+        } catch (XmlPullParserException e)
+        {
             e.printStackTrace();
-        } catch (IOException e) {
+        } catch (IOException e)
+        {
             e.printStackTrace();
         }
 

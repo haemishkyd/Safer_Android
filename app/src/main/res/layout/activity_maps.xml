@@ -24,12 +24,6 @@
             android:id="@+id/button_left"
             android:layout_weight="1.00"/>
 
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Place Holder"
-            android:id="@+id/button_right"
-            android:layout_weight="1.00"/>
     </TableRow>
 
 </LinearLayout>

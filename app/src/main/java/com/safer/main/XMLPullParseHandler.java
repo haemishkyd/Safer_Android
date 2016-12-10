@@ -14,17 +14,22 @@ import java.util.List;
  */
 public class XMLPullParseHandler
 {
-    private static final int NO_MESSAGE_TYPE = 719;
-    private static final int USER_MESSAGE_TYPE = 694;
-    private static final int AGENT_MESSAGE_TYPE = 179;
-    List<AgentPos> agent_pos_list;
+    public static final int NO_MESSAGE_TYPE = 719;
+    public static final int USER_MESSAGE_TYPE = 694;
+    public static final int AGENT_MESSAGE_TYPE = 179;
+    public static final int LOGIN_PASSED_MESSAGE_TYPE = 579;
+    public static final int LOGIN_FAILED_MESSAGE_TYPE = 815;
     private AgentPos agent_pos;
-    private int MessageFrom = NO_MESSAGE_TYPE;
     private String text;
+    private Operator parserOperator;
 
-    public XMLPullParseHandler()
+    List<AgentPos> agent_pos_list;
+    public int MessageFrom = NO_MESSAGE_TYPE;
+
+    public XMLPullParseHandler(Operator passOperator)
     {
         agent_pos_list = new ArrayList<AgentPos>();
+        parserOperator = passOperator;
     }
 
     public List<AgentPos> getEmployees()
@@ -54,10 +59,16 @@ public class XMLPullParseHandler
                         if (tagname.equalsIgnoreCase("agent_data"))
                         {
                             MessageFrom = AGENT_MESSAGE_TYPE;
-                        } else if (tagname.equalsIgnoreCase("user_data"))
+                        }
+                        else if (tagname.equalsIgnoreCase("user_data"))
                         {
                             MessageFrom = USER_MESSAGE_TYPE;
-                        } else if (tagname.equalsIgnoreCase("agent_pos"))
+                        }
+                        else if (tagname.equalsIgnoreCase("login_data"))
+                        {
+                            MessageFrom = LOGIN_PASSED_MESSAGE_TYPE;
+                        }
+                        else if (tagname.equalsIgnoreCase("agent_pos"))
                         {
                             agent_pos = new AgentPos();
                         }
@@ -72,32 +83,79 @@ public class XMLPullParseHandler
                         {
                             // add employee object to list
                             agent_pos_list.add(agent_pos);
-                        } else if (tagname.equalsIgnoreCase("agent_id"))
+                        }
+                        else if (tagname.equalsIgnoreCase("agent_id"))
                         {
                             agent_pos.SetAgentID(Integer.valueOf(text));
-                        } else if (tagname.equalsIgnoreCase("latitude"))
+                        }
+                        else if (tagname.equalsIgnoreCase("latitude"))
                         {
                             agent_pos.SetAgentLat(Double.valueOf(text));
-                        } else if (tagname.equalsIgnoreCase("longitude"))
+                        }
+                        else if (tagname.equalsIgnoreCase("longitude"))
                         {
                             agent_pos.SetAgentLong(Double.valueOf(text));
-                        } else if (tagname.equalsIgnoreCase("responding_status"))
+                        }
+                        else if (tagname.equalsIgnoreCase("responding_status"))
                         {
                             if (text.equals("1"))
                             {
                                 agent_pos.SetRespondingState(true);
-                            } else
+                            }
+                            else
                             {
                                 agent_pos.SetRespondingState(false);
                             }
-                        } else if (tagname.equalsIgnoreCase("responding_to_user"))
+                        }
+                        else if (tagname.equalsIgnoreCase("respond_to_latitude"))
+                        {
+                            agent_pos.SetAgentGoToLat(Double.valueOf(text));
+                        }
+                        else if (tagname.equalsIgnoreCase("responding_operator_role"))
+                        {
+                            agent_pos.SetCalledAgentRole(Integer.valueOf(text));
+                        }
+                        else if (tagname.equalsIgnoreCase("respond_to_longitude"))
+                        {
+                            agent_pos.SetAgentGoToLong(Double.valueOf(text));
+                        }
+                        else if (tagname.equalsIgnoreCase("responding_to_user"))
                         {
                             agent_pos.SetUserThatCalled(Integer.valueOf(text));
-
-                        } else if (tagname.equalsIgnoreCase("agent_data"))
+                        }
+                        else if (tagname.equalsIgnoreCase("operator_id"))
+                        {
+                            parserOperator.OperatorId = Integer.valueOf(text);
+                        }
+                        else if (tagname.equalsIgnoreCase("name"))
+                        {
+                            parserOperator.RealName = text;
+                        }
+                        else if (tagname.equalsIgnoreCase("surname"))
+                        {
+                            parserOperator.RealSurname = text;
+                        }
+                        else if (tagname.equalsIgnoreCase("user_agent_type"))
+                        {
+                            parserOperator.CurrentRole = Integer.valueOf(text);
+                        }
+                        else if (tagname.equalsIgnoreCase("company"))
+                        {
+                            parserOperator.Company = text;
+                        }
+                        else if (tagname.equalsIgnoreCase("error"))
+                        {
+                            MessageFrom = LOGIN_FAILED_MESSAGE_TYPE;
+                        }
+                        else if (tagname.equalsIgnoreCase("agent_data"))
                         {
 
-                        } else if (tagname.equalsIgnoreCase("user_data"))
+                        }
+                        else if (tagname.equalsIgnoreCase("user_data"))
+                        {
+
+                        }
+                        else if (tagname.equalsIgnoreCase("login_data"))
                         {
 
                         }

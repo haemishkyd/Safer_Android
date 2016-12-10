@@ -4,19 +4,37 @@
                 android:layout_height="fill_parent" >
 
     <TextView
-        android:id="@+id/text"
+        android:id="@+id/usernametext"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:textColor="#FFF"
-        android:layout_marginRight="5dp"/>/>
+        android:textColor="#000"
+        android:textSize="20dp"
+        android:layout_marginRight="5dp"
+        android:text="Username"/>
 
     <EditText
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:inputType="number"
-        android:ems="10"
-        android:id="@+id/editText"
-        android:layout_below="@+id/text"/>
+        android:textSize="20dp"
+        android:id="@+id/usernameinput"
+        android:layout_below="@+id/usernametext"/>
+
+    <TextView
+        android:id="@+id/passwordtext"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#000"
+        android:layout_marginRight="5dp"
+        android:textSize="20dp"
+        android:text="Password"
+        android:layout_below="@+id/usernameinput"/>
+
+    <EditText
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:textSize="20dp"
+        android:id="@+id/passwordinput"
+        android:layout_below="@+id/passwordtext"/>
 
     <Button
         android:id="@+id/dialogButtonOK"
@@ -25,7 +43,6 @@
         android:text=" Ok "
         android:layout_marginTop="5dp"
         android:layout_marginRight="5dp"
-        android:layout_below="@+id/editText"
-        />
+        android:layout_below="@+id/passwordinput"/>
 
 </RelativeLayout>

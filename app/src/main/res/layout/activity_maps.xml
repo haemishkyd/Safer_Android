@@ -12,19 +12,52 @@
               android:layout_height="wrap_content"
               android:layout_weight="1.00"/>
 
+
     <TableRow
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1.00">
-
-        <Button
-            android:layout_width="wrap_content"
+        android:layout_weight="0.1">
+        <TextView
+            android:id="@+id/tvLabel1"
+            android:paddingLeft="10dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Call Agent"
-            android:id="@+id/button_left"
-            android:layout_weight="1.00"/>
+            android:layout_weight="0.333"
+            android:background="#ff0000"
+            android:text="Ambulance" />
+        <TextView
+            android:id="@+id/tvLabel2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.333"
+            android:layout_centerHorizontal="true"
+            android:gravity="center"
+            android:background="#ff7700"
+            android:text="Security" />
+        <TextView
+            android:id="@+id/tvLabel3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.333"
+            android:gravity="right"
+            android:paddingRight="10dp"
+            android:background="#0000ff"
+            android:text="Tow Truck" />
+    </TableRow>
+    <TableRow
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:layout_weight="0.1">
+        <SeekBar
+            android:id="@+id/seekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progressDrawable="@drawable/progress"
+            android:max="2"
+            android:progress="1"
+            android:thumb="@drawable/shield"
+            style="@android:style/Widget.DeviceDefault.SeekBar"/>
 
     </TableRow>
-
 </LinearLayout>
 

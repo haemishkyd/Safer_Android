@@ -22,8 +22,10 @@ public class TCPClient
     private int m_AgentId;
     private int m_UserId;
     private int m_CallFlag = 0;
-    private int m_CurrentRole = 255;
     private int m_OnlineFlag = 0;
+    private int m_CallComplete = 255;
+
+    private Operator tcpMessageOperator;
 
     PrintWriter out;
     BufferedReader in;
@@ -58,11 +60,16 @@ public class TCPClient
         mRun = false;
     }
 
+    public void SetOperatorData(Operator passedOperatorData)
+    {
+        tcpMessageOperator = passedOperatorData;
+    }
+
     public void setCoordinates(LatLng current_coord, int agent_no)
     {
         m_LatitudeData = current_coord.latitude;
         m_LongitudeData = current_coord.longitude;
-        if (m_CurrentRole == 0)
+        if (tcpMessageOperator.CurrentRole == 0)
         {
             m_UserId = agent_no;
         } else
@@ -73,7 +80,7 @@ public class TCPClient
 
     public void setCallAction(int flag)
     {
-        if (m_CurrentRole == 0)
+        if (tcpMessageOperator.CurrentRole == 0)
         {
             m_CallFlag = flag;
         }
@@ -83,9 +90,20 @@ public class TCPClient
         }
     }
 
-    public void setCurrentRole(int role)
+    public void setCallComplete(int flag)
     {
-        m_CurrentRole = role;
+        if (flag == 1)
+        {
+            m_CallComplete = 0;
+        }
+        else if (flag == 0)
+        {
+            m_CallComplete = 1;
+        }
+        else
+        {
+            m_CallComplete = flag;
+        }
     }
 
     public void run()
@@ -106,12 +124,20 @@ public class TCPClient
                 //send the message to the server
                 out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
                 String message;
-                if (m_CurrentRole == 0)
+                if (tcpMessageOperator.CurrentlyLoggedIn)
                 {
-                    message = "<user_data><LatData>" + String.valueOf(m_LatitudeData) + "</LatData><LongData>" + String.valueOf(m_LongitudeData) + "</LongData><UserId>" + String.valueOf(m_UserId) + "</UserId><CallFlag>" + String.valueOf(m_CallFlag) + "</CallFlag></user_data>";
-                } else
+                    if (tcpMessageOperator.CurrentRole == 0)
+                    {
+                        message = "<user_data><LatData>" + String.valueOf(m_LatitudeData) + "</LatData><LongData>" + String.valueOf(m_LongitudeData) + "</LongData><UserId>" + String.valueOf(m_UserId) + "</UserId><CallFlag>" + String.valueOf(m_CallFlag) + "</CallFlag><TypeRequested>"+tcpMessageOperator.Agent_Type_Requested+"</TypeRequested></user_data>";
+                    }
+                    else
+                    {
+                        message = "<agent_data><LatData>" + String.valueOf(m_LatitudeData) + "</LatData><LongData>" + String.valueOf(m_LongitudeData) + "</LongData><AgentId>" + String.valueOf(m_AgentId) + "</AgentId><OnlineFlag>" + String.valueOf(m_OnlineFlag) + "</OnlineFlag><CallComplete>" + String.valueOf(m_CallComplete) + "</CallComplete></agent_data>";
+                    }
+                }
+                else
                 {
-                    message = "<agent_data><LatData>" + String.valueOf(m_LatitudeData) + "</LatData><LongData>" + String.valueOf(m_LongitudeData) + "</LongData><AgentId>" + String.valueOf(m_AgentId) + "</AgentId><OnlineFlag>" + String.valueOf(m_OnlineFlag) + "</OnlineFlag></agent_data>";
+                    message = "<login_data><username>"+tcpMessageOperator.Username+"</username><password>"+tcpMessageOperator.Password+"</password></login_data>";
                 }
 
                 this.sendMessage(message);

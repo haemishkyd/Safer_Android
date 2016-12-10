@@ -10,8 +10,11 @@ public class AgentPos
     private int AgentID;
     private double AgentLat;
     private double AgentLong;
+    private double AgentGoToLat;
+    private double AgentGoToLong;
     private boolean Responding;
     private int UserThatCalled;
+    private int CalledAgentRole;
 
     public int GetAgentID()
     {
@@ -24,6 +27,12 @@ public class AgentPos
         return returnPos;
     }
 
+    public LatLng GetAgentGoToPos()
+    {
+        LatLng returnPos = new LatLng(AgentGoToLat,AgentGoToLong);
+        return returnPos;
+    }
+
     public boolean GetRespondingState()
     {
         return Responding;
@@ -32,6 +41,11 @@ public class AgentPos
     public int GetUserThatCalled()
     {
         return UserThatCalled;
+    }
+
+    public int GetCalledAgentRole()
+    {
+        return CalledAgentRole;
     }
 
     public void SetAgentID(int agent_id)
@@ -49,6 +63,16 @@ public class AgentPos
         AgentLong = lon;
     }
 
+    public void SetAgentGoToLat(double lat)
+    {
+        AgentGoToLat = lat;
+    }
+
+    public void SetAgentGoToLong(double lon)
+    {
+        AgentGoToLong = lon;
+    }
+
     public void SetRespondingState(boolean state)
     {
         Responding = state;
@@ -57,5 +81,10 @@ public class AgentPos
     public void SetUserThatCalled(int user_id)
     {
         UserThatCalled = user_id;
+    }
+
+    public void SetCalledAgentRole(int role)
+    {
+        CalledAgentRole = role;
     }
 }

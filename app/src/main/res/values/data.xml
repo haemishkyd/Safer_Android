@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="ambulance_value">0</integer>
+    <integer name="security_value">100</integer>
+    <integer name="towtruck_value">200</integer>
+</resources>

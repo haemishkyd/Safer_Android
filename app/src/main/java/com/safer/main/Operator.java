@@ -29,12 +29,20 @@ public class Operator
     /* If this object is a normal user */
     public int CallActionFlag = 0; /* User has requested a call */
     public boolean MapHasBeenMoved = false;
+    public LatLng CurrentPosition = null;
     public LatLng CustomPosition = null;
     public int Agent_Type_Requested = REQ_SECURITY_AGENT;
+    public int RespondingAgent;
+    public boolean RequestResponderDetails = false;
+    public String ResponderRealName;
+    public String ResponderRealSurname;
+    public String ResponderCompany;
+    public String ResponderRegistration;
 
     /* If this object is an agent user */
     public int OnlineFlag = 1; /* Agent is currently online */
     public int ThisAgentHasBeenRequested = 0;
+    public int CallAcknowledgedFlag = 0;
     public int CallAnsweredFlag = 0;
     public int AgentCalledToWhichUser = 0;
     public LatLng AgentCalledToWhere;

@@ -23,13 +23,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="0.333"
-            android:background="#ff0000"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:background="#ea2017"
             android:text="Ambulance" />
         <TextView
             android:id="@+id/tvLabel2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="0.333"
+            android:textStyle="bold"
             android:layout_centerHorizontal="true"
             android:gravity="center"
             android:background="#ff7700"
@@ -39,22 +42,25 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="0.333"
-            android:gravity="right"
+            android:gravity="center"
             android:paddingRight="10dp"
-            android:background="#0000ff"
+            android:textStyle="bold"
+            android:background="#1757ea"
             android:text="Tow Truck" />
     </TableRow>
     <TableRow
         android:layout_width="match_parent"
-        android:layout_height="55dp"
-        android:layout_weight="0.1">
+        android:layout_height="55dp">
+
         <SeekBar
             android:id="@+id/seekBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:progressDrawable="@drawable/progress"
-            android:max="2"
-            android:progress="1"
+            android:max="@integer/towtruck_value"
+            android:progress="@integer/security_value"
+            android:paddingEnd="50dp"
+            android:paddingStart="50dp"
             android:thumb="@drawable/shield"
             style="@android:style/Widget.DeviceDefault.SeekBar"/>
 

@@ -17,10 +17,6 @@ public class TCPClient
     private OnMessageReceived mMessageListener = null;
     private boolean mRun = false;
     /* This is all the data to send */
-    private double m_LatitudeData;
-    private double m_LongitudeData;
-    private int m_AgentId;
-    private int m_UserId;
     private int m_CallFlag = 0;
     private int m_OnlineFlag = 0;
     private int m_CallComplete = 255;
@@ -55,60 +51,13 @@ public class TCPClient
         }
     }
 
-    public void stopClient()
-    {
-        mRun = false;
-    }
-
     public void SetOperatorData(Operator passedOperatorData)
     {
         tcpMessageOperator = passedOperatorData;
     }
 
-    public void setCoordinates(LatLng current_coord, int agent_no)
-    {
-        m_LatitudeData = current_coord.latitude;
-        m_LongitudeData = current_coord.longitude;
-        if (tcpMessageOperator.CurrentRole == 0)
-        {
-            m_UserId = agent_no;
-        } else
-        {
-            m_AgentId = agent_no;
-        }
-    }
-
-    public void setCallAction(int flag)
-    {
-        if (tcpMessageOperator.CurrentRole == 0)
-        {
-            m_CallFlag = flag;
-        }
-        else
-        {
-            m_OnlineFlag = flag;
-        }
-    }
-
-    public void setCallComplete(int flag)
-    {
-        if (flag == 1)
-        {
-            m_CallComplete = 0;
-        }
-        else if (flag == 0)
-        {
-            m_CallComplete = 1;
-        }
-        else
-        {
-            m_CallComplete = flag;
-        }
-    }
-
     public void run()
     {
-
         try
         {
             //here you must put your computer's IP address.
@@ -126,13 +75,50 @@ public class TCPClient
                 String message;
                 if (tcpMessageOperator.CurrentlyLoggedIn)
                 {
-                    if (tcpMessageOperator.CurrentRole == 0)
+                    LatLng tempCoord=null;
+                    int callCompleteFlag;
+                    /**********************************************************************
+                    /* Assign the position based on what is populated
+                    /**********************************************************************/
+                    if (tcpMessageOperator.CustomPosition != null)
                     {
-                        message = "<user_data><LatData>" + String.valueOf(m_LatitudeData) + "</LatData><LongData>" + String.valueOf(m_LongitudeData) + "</LongData><UserId>" + String.valueOf(m_UserId) + "</UserId><CallFlag>" + String.valueOf(m_CallFlag) + "</CallFlag><TypeRequested>"+tcpMessageOperator.Agent_Type_Requested+"</TypeRequested></user_data>";
+                        tempCoord = tcpMessageOperator.CustomPosition;
                     }
                     else
                     {
-                        message = "<agent_data><LatData>" + String.valueOf(m_LatitudeData) + "</LatData><LongData>" + String.valueOf(m_LongitudeData) + "</LongData><AgentId>" + String.valueOf(m_AgentId) + "</AgentId><OnlineFlag>" + String.valueOf(m_OnlineFlag) + "</OnlineFlag><CallComplete>" + String.valueOf(m_CallComplete) + "</CallComplete></agent_data>";
+                        tempCoord = tcpMessageOperator.CurrentPosition;
+                    }
+                    /**********************************************************************
+                    /* Assign the call complete based on some logic
+                    /**********************************************************************/
+                    if (tcpMessageOperator.ThisAgentHasBeenRequested == 1)
+                    {
+                        callCompleteFlag = 0;
+                    }
+                    else if (tcpMessageOperator.ThisAgentHasBeenRequested == 0)
+                    {
+                        callCompleteFlag = 1;
+                    }
+                    else
+                    {
+                        callCompleteFlag = tcpMessageOperator.ThisAgentHasBeenRequested;
+                    }
+                    /**********************************************************************/
+                    if (tcpMessageOperator.RequestResponderDetails == true)
+                    {
+                        message = "<get_agent_data><agent_id>"+String.valueOf(tcpMessageOperator.RespondingAgent)+"</agent_id></get_agent_data>";
+                        tcpMessageOperator.RequestResponderDetails = false;
+                    }
+                    else
+                    {
+                        if (tcpMessageOperator.CurrentRole == tcpMessageOperator.ROLE_USER)
+                        {
+                            message = "<user_data><LatData>" + String.valueOf(tempCoord.latitude) + "</LatData><LongData>" + String.valueOf(tempCoord.longitude) + "</LongData><UserId>" + String.valueOf(tcpMessageOperator.OperatorId) + "</UserId><CallFlag>" + String.valueOf(tcpMessageOperator.CallActionFlag) + "</CallFlag><TypeRequested>" + tcpMessageOperator.Agent_Type_Requested + "</TypeRequested></user_data>";
+                        }
+                        else
+                        {
+                            message = "<agent_data><LatData>" + String.valueOf(tempCoord.latitude) + "</LatData><LongData>" + String.valueOf(tempCoord.longitude) + "</LongData><AgentId>" + String.valueOf(tcpMessageOperator.OperatorId) + "</AgentId><OnlineFlag>" + String.valueOf(tcpMessageOperator.OnlineFlag) + "</OnlineFlag><Acknowledge>" + String.valueOf(tcpMessageOperator.CallAcknowledgedFlag) + "</Acknowledge><CallComplete>" + String.valueOf(callCompleteFlag) + "</CallComplete></agent_data>";
+                        }
                     }
                 }
                 else
@@ -144,8 +130,6 @@ public class TCPClient
                 mRun = true;
 
                 Log.e("TCP Client", "C: Sent.");
-
-                Log.e("TCP Client", "C: Done.");
 
                 //receive the message which the server sends back
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));

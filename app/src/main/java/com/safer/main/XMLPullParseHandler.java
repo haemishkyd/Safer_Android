@@ -19,6 +19,8 @@ public class XMLPullParseHandler
     public static final int AGENT_MESSAGE_TYPE = 179;
     public static final int LOGIN_PASSED_MESSAGE_TYPE = 579;
     public static final int LOGIN_FAILED_MESSAGE_TYPE = 815;
+    public static final int AGENT_DATA_FAILED = 574;
+    public static final int AGENT_DATA_RESPONSE = 758;
     private AgentPos agent_pos;
     private String text;
     private Operator parserOperator;
@@ -56,6 +58,7 @@ public class XMLPullParseHandler
                 switch (eventType)
                 {
                     case XmlPullParser.START_TAG:
+                        /* Check the main message header - what are we dealing with */
                         if (tagname.equalsIgnoreCase("agent_data"))
                         {
                             MessageFrom = AGENT_MESSAGE_TYPE;
@@ -68,7 +71,12 @@ public class XMLPullParseHandler
                         {
                             MessageFrom = LOGIN_PASSED_MESSAGE_TYPE;
                         }
-                        else if (tagname.equalsIgnoreCase("agent_pos"))
+                        else if (tagname.equalsIgnoreCase("agent_details"))
+                        {
+                            MessageFrom = AGENT_DATA_RESPONSE;
+                        }
+                        /* If this is a agent position we need to create a new object */
+                        if (tagname.equalsIgnoreCase("agent_pos") && (MessageFrom == USER_MESSAGE_TYPE))
                         {
                             agent_pos = new AgentPos();
                         }
@@ -79,88 +87,119 @@ public class XMLPullParseHandler
                         break;
 
                     case XmlPullParser.END_TAG:
-                        if (tagname.equalsIgnoreCase("agent_pos"))
+                        if (MessageFrom == AGENT_DATA_RESPONSE)
                         {
-                            // add employee object to list
-                            agent_pos_list.add(agent_pos);
-                        }
-                        else if (tagname.equalsIgnoreCase("agent_id"))
-                        {
-                            agent_pos.SetAgentID(Integer.valueOf(text));
-                        }
-                        else if (tagname.equalsIgnoreCase("latitude"))
-                        {
-                            agent_pos.SetAgentLat(Double.valueOf(text));
-                        }
-                        else if (tagname.equalsIgnoreCase("longitude"))
-                        {
-                            agent_pos.SetAgentLong(Double.valueOf(text));
-                        }
-                        else if (tagname.equalsIgnoreCase("responding_status"))
-                        {
-                            if (text.equals("1"))
+                            if (tagname.equalsIgnoreCase("agent_name"))
                             {
-                                agent_pos.SetRespondingState(true);
+                                parserOperator.ResponderRealName = text;
                             }
-                            else
+                            if (tagname.equalsIgnoreCase("agent_surname"))
                             {
-                                agent_pos.SetRespondingState(false);
+                                parserOperator.ResponderRealSurname = text;
+                            }
+                            if (tagname.equalsIgnoreCase("agent_company"))
+                            {
+                                parserOperator.ResponderCompany = text;
+                            }
+                            if (tagname.equalsIgnoreCase("agent_registration"))
+                            {
+                                parserOperator.ResponderRegistration = text;
+                            }
+                            else if (tagname.equalsIgnoreCase("error"))
+                            {
+                                MessageFrom = AGENT_DATA_FAILED;
+                            }
+                            else if (tagname.equalsIgnoreCase("agent_details"))
+                            {
                             }
                         }
-                        else if (tagname.equalsIgnoreCase("respond_to_latitude"))
+                        if (MessageFrom == AGENT_MESSAGE_TYPE)
                         {
-                            agent_pos.SetAgentGoToLat(Double.valueOf(text));
+                            if (tagname.equalsIgnoreCase("agent_data"))
+                            {
+                            }
                         }
-                        else if (tagname.equalsIgnoreCase("responding_operator_role"))
+                        if (MessageFrom == USER_MESSAGE_TYPE)
                         {
-                            agent_pos.SetCalledAgentRole(Integer.valueOf(text));
+                            if (tagname.equalsIgnoreCase("agent_pos"))
+                            {
+                                // add employee object to list
+                                agent_pos_list.add(agent_pos);
+                            }
+                            else if (tagname.equalsIgnoreCase("agent_id"))
+                            {
+                                agent_pos.SetAgentID(Integer.valueOf(text));
+                            }
+                            else if (tagname.equalsIgnoreCase("latitude"))
+                            {
+                                agent_pos.SetAgentLat(Double.valueOf(text));
+                            }
+                            else if (tagname.equalsIgnoreCase("longitude"))
+                            {
+                                agent_pos.SetAgentLong(Double.valueOf(text));
+                            }
+                            else if (tagname.equalsIgnoreCase("responding_status"))
+                            {
+                                if (text.equals("1"))
+                                {
+                                    agent_pos.SetRespondingState(true);
+                                }
+                                else
+                                {
+                                    agent_pos.SetRespondingState(false);
+                                }
+                            }
+                            else if (tagname.equalsIgnoreCase("respond_to_latitude"))
+                            {
+                                agent_pos.SetAgentGoToLat(Double.valueOf(text));
+                            }
+                            else if (tagname.equalsIgnoreCase("responding_operator_role"))
+                            {
+                                agent_pos.SetCalledAgentRole(Integer.valueOf(text));
+                            }
+                            else if (tagname.equalsIgnoreCase("respond_to_longitude"))
+                            {
+                                agent_pos.SetAgentGoToLong(Double.valueOf(text));
+                            }
+                            else if (tagname.equalsIgnoreCase("responding_to_user"))
+                            {
+                                agent_pos.SetUserThatCalled(Integer.valueOf(text));
+                            }
+                            else if (tagname.equalsIgnoreCase("user_data"))
+                            {
+                            }
                         }
-                        else if (tagname.equalsIgnoreCase("respond_to_longitude"))
+                        if (MessageFrom == LOGIN_PASSED_MESSAGE_TYPE)
                         {
-                            agent_pos.SetAgentGoToLong(Double.valueOf(text));
-                        }
-                        else if (tagname.equalsIgnoreCase("responding_to_user"))
-                        {
-                            agent_pos.SetUserThatCalled(Integer.valueOf(text));
-                        }
-                        else if (tagname.equalsIgnoreCase("operator_id"))
-                        {
-                            parserOperator.OperatorId = Integer.valueOf(text);
-                        }
-                        else if (tagname.equalsIgnoreCase("name"))
-                        {
-                            parserOperator.RealName = text;
-                        }
-                        else if (tagname.equalsIgnoreCase("surname"))
-                        {
-                            parserOperator.RealSurname = text;
-                        }
-                        else if (tagname.equalsIgnoreCase("user_agent_type"))
-                        {
-                            parserOperator.CurrentRole = Integer.valueOf(text);
-                        }
-                        else if (tagname.equalsIgnoreCase("company"))
-                        {
-                            parserOperator.Company = text;
-                        }
-                        else if (tagname.equalsIgnoreCase("error"))
-                        {
-                            MessageFrom = LOGIN_FAILED_MESSAGE_TYPE;
-                        }
-                        else if (tagname.equalsIgnoreCase("agent_data"))
-                        {
-
-                        }
-                        else if (tagname.equalsIgnoreCase("user_data"))
-                        {
-
-                        }
-                        else if (tagname.equalsIgnoreCase("login_data"))
-                        {
-
+                            if (tagname.equalsIgnoreCase("operator_id"))
+                            {
+                                parserOperator.OperatorId = Integer.valueOf(text);
+                            }
+                            else if (tagname.equalsIgnoreCase("name"))
+                            {
+                                parserOperator.RealName = text;
+                            }
+                            else if (tagname.equalsIgnoreCase("surname"))
+                            {
+                                parserOperator.RealSurname = text;
+                            }
+                            else if (tagname.equalsIgnoreCase("user_agent_type"))
+                            {
+                                parserOperator.CurrentRole = Integer.valueOf(text);
+                            }
+                            else if (tagname.equalsIgnoreCase("company"))
+                            {
+                                parserOperator.Company = text;
+                            }
+                            else if (tagname.equalsIgnoreCase("error"))
+                            {
+                                MessageFrom = LOGIN_FAILED_MESSAGE_TYPE;
+                            }
+                            else if (tagname.equalsIgnoreCase("login_data"))
+                            {
+                            }
                         }
                         break;
-
                     default:
                         break;
                 }

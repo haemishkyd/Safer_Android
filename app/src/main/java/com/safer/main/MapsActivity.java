@@ -1,14 +1,9 @@
 package com.safer.main;
 
-import android.app.Activity;
 import android.app.Dialog;
-import android.app.Notification;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.location.Criteria;
@@ -18,9 +13,7 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Handler;
-import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
-//import android.support.v4.content.ContextCompat;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -29,9 +22,9 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -68,7 +61,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleMap mMap;
     Handler h = new Handler();
     int delay = 1000;
-    private TCPClient mTcpClient;
+    private DjangoInterface mDjangoClient;
     private double latitude_data = -26.11846;
     private double longitude_data = 28.00108;
     LatLng localPosition;
@@ -82,8 +75,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private List<Marker> mapMarkers;
     private Marker  myPosition;
     private Polyline mapPolyline;
-
-
+    private boolean FlagToRequestResponderDetails;
+    private long AgentDetailsRetryTimer;
     List<AgentPos> ShieldPlacement = null;
     SeekBar mySeekbar;
 
@@ -120,7 +113,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             loginButton.setTitle(R.string.menu_logout);
             if (appOperator.CurrentRole == Operator.ROLE_USER)
             {
-                setTitle("SAfer User " + Integer.toString(appOperator.OperatorId));
+                setTitle("User: " + appOperator.RealName+" "+ appOperator.RealSurname);
                 if (mySeekbar != null)
                 {
                     mySeekbar.setEnabled(true);
@@ -135,15 +128,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 (appOperator.CurrentRole == appOperator.ROLE_AMBULANCE_AGENT) ||
                 (appOperator.CurrentRole == appOperator.ROLE_TOWTRUCK_AGENT))
             {
-                setTitle("SAfer Agent " + Integer.toString(appOperator.OperatorId));
+                setTitle("Agent: " + appOperator.RealName+" "+ appOperator.RealSurname);
                 if (mySeekbar != null)
                 {
                     if (appOperator.CurrentRole == appOperator.ROLE_AMBULANCE_AGENT)
-                        mySeekbar.setProgress(0);
+                        mySeekbar.setProgress(R.integer.ambulance_value);
                     if (appOperator.CurrentRole == appOperator.ROLE_SECURITY_AGENT)
-                        mySeekbar.setProgress(1);
+                        mySeekbar.setProgress(R.integer.security_value);
                     if (appOperator.CurrentRole == appOperator.ROLE_TOWTRUCK_AGENT)
-                        mySeekbar.setProgress(2);
+                        mySeekbar.setProgress(R.integer.towtruck_value);
                     mySeekbar.setEnabled(false);
                 }
                 if (localMenuReference != null)
@@ -160,6 +153,221 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    public void acknowledgeDialog()
+    {
+        // custom dialog
+        final Dialog ack_dialog = new Dialog(this);
+        ack_dialog.getWindow().requestFeature(Window.FEATURE_NO_TITLE);
+        ack_dialog.setContentView(R.layout.acknowldge_layout);
+
+        TextView currentInfo= (TextView)ack_dialog.findViewById(R.id.instructions_2);
+        currentInfo.setText("A user (" + Integer.toString(appOperator.AgentCalledToWhichUser) + ") has requested your service at Lat:" + Double.toString(appOperator.AgentCalledToWhere.latitude) + " Long: " + Double.toString(appOperator.AgentCalledToWhere.longitude));
+        Button ackButton_user = (Button) ack_dialog.findViewById(R.id.acknowledgecall);
+        // if button is clicked, close the custom dialog
+        ackButton_user.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                appOperator.CallAcknowledgedFlag=1;
+                ack_dialog.dismiss();
+            }
+        });
+        ack_dialog.show();
+    }
+
+    public void acknowledgeResponderDialog()
+    {
+        // custom dialog
+        final Dialog ack_dialog = new Dialog(this);
+        ack_dialog.getWindow().requestFeature(Window.FEATURE_NO_TITLE);
+        ack_dialog.setContentView(R.layout.acknowldge_layout);
+
+        TextView currentInfo= (TextView)ack_dialog.findViewById(R.id.instructions_2);
+        currentInfo.setText("Agent: "+appOperator.ResponderRealName+" "+appOperator.ResponderRealSurname+" from "+appOperator.ResponderCompany+". Registration: "+appOperator.ResponderRegistration);
+        Button ackButton_user = (Button) ack_dialog.findViewById(R.id.acknowledgecall);
+        ackButton_user.setText("OK");
+        // if button is clicked, close the custom dialog
+        ackButton_user.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                ack_dialog.dismiss();
+            }
+        });
+        ack_dialog.show();
+    }
+
+    public void runShieldPlacement()
+    {
+        if (ShieldPlacement != null)
+        {
+            int shield_idx;
+            appOperator.RespondingAgent = 0;
+            /**********************************************************************
+             * Clear all the markers for the agents currently open.
+             **********************************************************************/
+            for (Marker tempMarker:mapMarkers)
+            {
+                tempMarker.remove();
+            }
+            mapMarkers.clear();
+            /**********************************************************************
+             * We go through all of the agents and their positions as they have
+             * been returned to us!!
+             **********************************************************************/
+            for (shield_idx = 0; shield_idx < ShieldPlacement.size(); shield_idx++)
+            {
+                int shield_choice;
+                if (appOperator.OperatorId != ShieldPlacement.get(shield_idx).GetAgentID())
+                {
+                    /**********************************************************************
+                     * If the agent is not set to responding simply show where they are.
+                     **********************************************************************/
+                    if (!ShieldPlacement.get(shield_idx).GetRespondingState())
+                    {
+                        shield_choice = R.drawable.security_shield;
+                        if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_SECURITY_AGENT)
+                        {
+                            shield_choice = R.drawable.security_shield;
+                        }
+                        else if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_AMBULANCE_AGENT)
+                        {
+                            shield_choice = R.drawable.ambulance_shield;
+                        }
+                        else if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_TOWTRUCK_AGENT)
+                        {
+                            shield_choice = R.drawable.towtruck_shield;
+                        }
+                        mapMarkers.add(mMap.addMarker(new MarkerOptions()
+                                .position(ShieldPlacement.get(shield_idx).GetAgentPos())
+                                .anchor(0.5f, 0.5f)
+                                .title("Shield " + Integer.toString(ShieldPlacement.get(shield_idx).GetAgentID()))
+                                .icon(BitmapDescriptorFactory.fromResource(shield_choice))
+                        ));
+                    }
+                    /**********************************************************************
+                     * If the agent is responding lets have a look at it.
+                     **********************************************************************/
+                    else if (ShieldPlacement.get(shield_idx).GetRespondingState())
+                    {
+                        /**********************************************************************
+                         * Is the agent responding to me (assuming I am a user)
+                         **********************************************************************/
+                        if (ShieldPlacement.get(shield_idx).GetUserThatCalled() == appOperator.OperatorId)
+                        {
+                            if (appOperator.CurrentRole == appOperator.ROLE_USER)
+                            {
+                                shield_choice = R.drawable.security_shield_r;
+                                if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_SECURITY_AGENT)
+                                {
+                                    shield_choice = R.drawable.security_shield_r;
+                                }
+                                else if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_AMBULANCE_AGENT)
+                                {
+                                    shield_choice = R.drawable.ambulance_shield_r;
+                                }
+                                else if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_TOWTRUCK_AGENT)
+                                {
+                                    shield_choice = R.drawable.towtruck_shield_r;
+                                }
+                                appOperator.RespondingAgent = ShieldPlacement.get(shield_idx).GetAgentID();
+                                pDialog.dismiss();
+                                if (FlagToRequestResponderDetails)
+                                {
+                                    appOperator.RequestResponderDetails = true;
+                                    FlagToRequestResponderDetails = false;
+                                    AgentDetailsRetryTimer = System.currentTimeMillis();
+                                }
+                                mapMarkers.add(mMap.addMarker(new MarkerOptions()
+                                        .position(ShieldPlacement.get(shield_idx).GetAgentPos())
+                                        .anchor(0.5f, 0.5f)
+                                        .title("Shield " + Integer.toString(ShieldPlacement.get(shield_idx).GetAgentID()))
+                                        .icon(BitmapDescriptorFactory.fromResource(shield_choice))
+                                ));
+                                            /* Kill my call flag */
+                                appOperator.CallActionFlag = 0;
+                            }
+                        }
+                    }
+                    /**********************************************************************
+                     * If the user that called this one is NOT me and this agent in in a
+                     * responding state then it is assigned to someone else so we don't
+                     * display it.
+                     **********************************************************************/
+                }
+
+            }
+            /**********************************************************************
+             * Logic if there is no one responding.
+             **********************************************************************/
+            if (appOperator.CurrentRole == appOperator.ROLE_USER)
+            {
+                if (appOperator.RespondingAgent == 0)
+                {
+                    appOperator.ResponderRealName = "";
+                    appOperator.ResponderRealSurname = "";
+                    appOperator.ResponderCompany = "";
+                    appOperator.ResponderRegistration = "";
+                }
+                else if (((System.currentTimeMillis() - AgentDetailsRetryTimer) > 10000) && (appOperator.ResponderRealName.isEmpty()))
+                {
+                    FlagToRequestResponderDetails = true;
+                }
+            }
+
+            if ((appOperator.CurrentRole == appOperator.ROLE_SECURITY_AGENT) ||
+                    (appOperator.CurrentRole == appOperator.ROLE_AMBULANCE_AGENT) ||
+                    (appOperator.CurrentRole == appOperator.ROLE_TOWTRUCK_AGENT))
+            {
+                /**********************************************************************
+                 * We go through all of the agents and their positions as they have
+                 * been returned to us!! One of them will be us.
+                 **********************************************************************/
+                for (shield_idx = 0; shield_idx < ShieldPlacement.size(); shield_idx++)
+                {
+                    /**************************************************
+                     * If this agent is me and is set to responding   *
+                     **************************************************/
+                    if ((ShieldPlacement.get(shield_idx).GetAgentID() == appOperator.OperatorId) && (ShieldPlacement.get(shield_idx).GetRespondingState()))
+                    {
+                        if (appOperator.CallAnsweredFlag == 0)
+                        {
+                            appOperator.AgentCalledToWhichUser = ShieldPlacement.get(shield_idx).GetUserThatCalled();
+                            appOperator.AgentCalledToWhere = ShieldPlacement.get(shield_idx).GetAgentGoToPos();
+                            if ((appOperator.ThisAgentHasBeenRequested == 0)||(appOperator.ThisAgentHasBeenRequested == 255))
+                            {
+                                acknowledgeDialog();
+                            }
+                            appOperator.ThisAgentHasBeenRequested = 1;
+                            // Getting URL to the Google Directions API
+                            String url = getDirectionsUrl(ShieldPlacement.get(shield_idx).GetAgentPos(), appOperator.AgentCalledToWhere);
+
+                            DownloadTask downloadTask = new DownloadTask();
+
+                            // Start downloading json data from Google Directions API
+                            downloadTask.execute(url);
+                            publishNotification(0);
+                            mapMarkers.add(mMap.addMarker(new MarkerOptions()
+                                    .position(ShieldPlacement.get(shield_idx).GetAgentGoToPos())
+                                    .title("Final Destination")
+                                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.destination))));
+                        }
+                    }
+                    /*************************************************
+                     * If this one is me but is not set to responding *
+                     **************************************************/
+                    if ((ShieldPlacement.get(shield_idx).GetAgentID() == appOperator.OperatorId) && (!ShieldPlacement.get(shield_idx).GetRespondingState()))
+                    {
+                        appOperator.ThisAgentHasBeenRequested = 255;
+                        appOperator.CallAnsweredFlag = 0;
+                        appOperator.CallAcknowledgedFlag = 0;
+                    }
+                }
+            }
+        }
+    }
     /**
      * A method to download json data from url
      */
@@ -260,6 +468,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 {
                     // custom dialog
                     final Dialog dialog_user = new Dialog(this);
+                    dialog_user.getWindow().requestFeature(Window.FEATURE_NO_TITLE);
                     dialog_user.setContentView(R.layout.agent_id_enter);
 
                     Button dialogButton_user = (Button) dialog_user.findViewById(R.id.dialogButtonOK);
@@ -325,6 +534,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         // Define the criteria how to select the location provider -> use
         // default
+        FlagToRequestResponderDetails = true;
         Criteria criteria = new Criteria();
         provider = locationManager.getBestProvider(criteria, false);
         appInfoStore = new SaferDatabase(MapsActivity.this);
@@ -350,17 +560,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void onStopTrackingTouch(SeekBar seekBar)
             {
-                switch (seekBar.getProgress())
+                if (seekBar.getProgress() < 50)
                 {
-                    case 0:
-                        appOperator.Agent_Type_Requested = appOperator.REQ_AMBULANCE_AGENT;
-                        break;
-                    case 1:
-                        appOperator.Agent_Type_Requested = appOperator.REQ_SECURITY_AGENT;
-                        break;
-                    case 2:
-                        appOperator.Agent_Type_Requested = appOperator.REQ_TOWTRUCK_AGENT;
-                        break;
+                    appOperator.Agent_Type_Requested = appOperator.REQ_AMBULANCE_AGENT;
+                    seekBar.setProgress(0);
+                }
+                if ((seekBar.getProgress()>=50) && (seekBar.getProgress()<150))
+                {
+                    appOperator.Agent_Type_Requested = appOperator.REQ_SECURITY_AGENT;
+                    seekBar.setProgress(100);
+                }
+                if (seekBar.getProgress()>=150)
+                {
+                    appOperator.Agent_Type_Requested = appOperator.REQ_TOWTRUCK_AGENT;
+                    seekBar.setProgress(200);
                 }
             }
 
@@ -398,16 +611,16 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         {
             public void run()
             {
-                if ((mTcpClient != null) && (localPosition != null))
+                if ((mDjangoClient != null) && (localPosition != null))
                 {
                     latitude_data = localPosition.latitude;
                     longitude_data = localPosition.longitude;
                     LatLng carmarker = new LatLng(latitude_data, longitude_data);
-                    for (Marker tempMarker:mapMarkers)
+
+                    if (myPosition != null)
                     {
-                        tempMarker.remove();
+                        myPosition.remove();
                     }
-                    mapMarkers.clear();
                     if (appOperator.ThisAgentHasBeenRequested != 1)
                     {
                         if (mapPolyline != null)
@@ -415,10 +628,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                             mapPolyline.remove();
                         }
                     }
-
+                    /**********************************************************************
+                     * As an agent or user mark my current position.
+                     **********************************************************************/
                     if ((appOperator.CurrentRole == appOperator.ROLE_SECURITY_AGENT) ||
-                            (appOperator.CurrentRole == appOperator.ROLE_AMBULANCE_AGENT) ||
-                            (appOperator.CurrentRole == appOperator.ROLE_TOWTRUCK_AGENT))
+                        (appOperator.CurrentRole == appOperator.ROLE_AMBULANCE_AGENT) ||
+                        (appOperator.CurrentRole == appOperator.ROLE_TOWTRUCK_AGENT))
                     {
                         if (appOperator.ThisAgentHasBeenRequested == 1)
                         {
@@ -438,7 +653,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         }
 
                     }
-                    else
+                    else if (appOperator.CurrentRole == appOperator.ROLE_USER)
                     {
                         myPosition = mMap.addMarker(new MarkerOptions()
                                 .position(carmarker).title("You").snippet("Click For Help")
@@ -447,110 +662,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         );
                     }
                     myPosition.showInfoWindow();
-                    mapMarkers.add(myPosition);
 
                     if (!appOperator.MapHasBeenMoved)
                     {
                         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(carmarker, 16.0f));
                     }
+                    /**********************************************************************
+                     * We have manually marked a place to go.
+                     **********************************************************************/
                     if (appOperator.CustomPosition != null)
                     {
                         mapMarkers.add(mMap.addMarker(new MarkerOptions()
                                 .position(appOperator.CustomPosition)
                                 .title("Custom location").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)))
                         );
-                    }
-                    if (ShieldPlacement != null)
-                    {
-                        int shield_idx = 0;
-                        for (shield_idx = 0; shield_idx < ShieldPlacement.size(); shield_idx++)
-                        {
-                            int shield_choice;
-                            if (appOperator.OperatorId != ShieldPlacement.get(shield_idx).GetAgentID())
-                            {
-                                if (!ShieldPlacement.get(shield_idx).GetRespondingState())
-                                {
-                                    shield_choice = R.drawable.security_shield;
-                                    if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_SECURITY_AGENT)
-                                    {
-                                        shield_choice = R.drawable.security_shield;
-                                    }
-                                    else if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_AMBULANCE_AGENT)
-                                    {
-                                        shield_choice = R.drawable.ambulance_shield;
-                                    }
-                                    else if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_TOWTRUCK_AGENT)
-                                    {
-                                        shield_choice = R.drawable.towtruck_shield;
-                                    }
-                                    mapMarkers.add(mMap.addMarker(new MarkerOptions()
-                                            .position(ShieldPlacement.get(shield_idx).GetAgentPos())
-                                            .anchor(0.5f, 0.5f)
-                                            .title("Shield " + Integer.toString(ShieldPlacement.get(shield_idx).GetAgentID()))
-                                            .icon(BitmapDescriptorFactory.fromResource(shield_choice))
-                                    ));
-                                }
-                                else if ((ShieldPlacement.get(shield_idx).GetUserThatCalled() == appOperator.OperatorId) &&
-                                        (ShieldPlacement.get(shield_idx).GetRespondingState()))
-                                {
-                                    shield_choice = R.drawable.security_shield_r;
-                                    if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_SECURITY_AGENT)
-                                    {
-                                        shield_choice = R.drawable.security_shield_r;
-                                    }
-                                    else if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_AMBULANCE_AGENT)
-                                    {
-                                        shield_choice = R.drawable.ambulance_shield_r;
-                                    }
-                                    else if (ShieldPlacement.get(shield_idx).GetCalledAgentRole() == appOperator.ROLE_TOWTRUCK_AGENT)
-                                    {
-                                        shield_choice = R.drawable.towtruck_shield_r;
-                                    }
-                                    pDialog.dismiss();
-                                    mapMarkers.add(mMap.addMarker(new MarkerOptions()
-                                            .position(ShieldPlacement.get(shield_idx).GetAgentPos())
-                                            .anchor(0.5f, 0.5f)
-                                            .title("Shield " + Integer.toString(ShieldPlacement.get(shield_idx).GetAgentID()))
-                                            .icon(BitmapDescriptorFactory.fromResource(shield_choice))
-                                    ));
-                                }
-                            }
-
-                        }
-                        if ((appOperator.CurrentRole == appOperator.ROLE_SECURITY_AGENT) ||
-                            (appOperator.CurrentRole == appOperator.ROLE_AMBULANCE_AGENT) ||
-                            (appOperator.CurrentRole == appOperator.ROLE_TOWTRUCK_AGENT))
-                        {
-                            for (shield_idx = 0; shield_idx < ShieldPlacement.size(); shield_idx++)
-                            {
-                                if (ShieldPlacement.get(shield_idx).GetRespondingState() && (ShieldPlacement.get(shield_idx).GetAgentID() == appOperator.OperatorId))
-                                {
-                                    if (appOperator.CallAnsweredFlag == 0)
-                                    {
-                                        appOperator.ThisAgentHasBeenRequested = 1;
-                                        appOperator.AgentCalledToWhichUser = ShieldPlacement.get(shield_idx).GetUserThatCalled();
-                                        appOperator.AgentCalledToWhere = ShieldPlacement.get(shield_idx).GetAgentGoToPos();
-                                        // Getting URL to the Google Directions API
-                                        String url = getDirectionsUrl(ShieldPlacement.get(shield_idx).GetAgentPos(), appOperator.AgentCalledToWhere);
-
-                                        DownloadTask downloadTask = new DownloadTask();
-
-                                        // Start downloading json data from Google Directions API
-                                        downloadTask.execute(url);
-                                        publishNotification(0);
-                                        mapMarkers.add(mMap.addMarker(new MarkerOptions()
-                                                .position(ShieldPlacement.get(shield_idx).GetAgentGoToPos())
-                                                .title("Final Destination")
-                                                .icon(BitmapDescriptorFactory.fromResource(R.drawable.destination))));
-                                    }
-                                }
-                                if ((!ShieldPlacement.get(shield_idx).GetRespondingState()) && (ShieldPlacement.get(shield_idx).GetAgentID() == appOperator.OperatorId))
-                                {
-                                    appOperator.ThisAgentHasBeenRequested = 255;
-                                    appOperator.CallAnsweredFlag = 0;
-                                }
-                            }
-                        }
                     }
                     regularUIFunctions();
                 }
@@ -653,10 +778,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onLocationChanged(Location location)
     {
         localPosition = new LatLng(location.getLatitude(), location.getLongitude());
-        String longitude = "Longitude: " + location.getLongitude();
-        Log.e("Long: ", longitude);
-        String latitude = "Latitude: " + location.getLatitude();
-        Log.e("Lat: ", latitude);
     }
 
     @Override
@@ -677,6 +798,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     /* If we're a user */
             if (appOperator.CurrentRole == Operator.ROLE_USER)
             {
+                FlagToRequestResponderDetails = true;
                 appOperator.CallActionFlag = 1;
                 pDialog = new ProgressDialog(MapsActivity.this);
                 pDialog.setMessage("Finding Your Safer Agent..");
@@ -710,13 +832,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     /***************************************************************************
      *                     CLASS: HANDLES THE COMMUNICATIONS
      ***************************************************************************/
-    public class connectTask extends AsyncTask<String, String, TCPClient>
+    public class connectTask extends AsyncTask<String, String, DjangoInterface>
     {
         @Override
-        protected TCPClient doInBackground(String... message)
+        protected DjangoInterface doInBackground(String... message)
         {
-            //we create a TCPClient object and
-            mTcpClient = new TCPClient(new TCPClient.OnMessageReceived()
+            mDjangoClient = new DjangoInterface(new DjangoInterface.OnMessageReceived()
             {
                 @Override
                 //here the messageReceived method is implemented
@@ -726,33 +847,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     publishProgress(message);
                 }
             });
-            /* Sets the macro transfer of data to TCP object */
-            mTcpClient.SetOperatorData(appOperator);
+            /**************************************************
+             *      Transfer of data to the TCP object.       *
+             **************************************************/
+            mDjangoClient.SetOperatorData(appOperator);
 
             if (appOperator.CurrentlyLoggedIn)
             {
-                LatLng carmarker = new LatLng(latitude_data, longitude_data);
-                if (appOperator.CurrentRole == Operator.ROLE_USER)
-                {
-                    if (appOperator.CustomPosition != null)
-                    {
-                        mTcpClient.setCoordinates(appOperator.CustomPosition, appOperator.OperatorId);
-                    }
-                    else
-                    {
-                        mTcpClient.setCoordinates(carmarker, appOperator.OperatorId);
-                    }
-                    mTcpClient.setCallAction(appOperator.CallActionFlag);
-                }
-                else
-                {
-                    mTcpClient.setCoordinates(carmarker, appOperator.OperatorId);
-                    mTcpClient.setCallAction(appOperator.OnlineFlag);
-                    mTcpClient.setCallComplete(appOperator.ThisAgentHasBeenRequested);
-                }
-                appOperator.CallActionFlag = 0;
+                /* Create current position object */
+                appOperator.CurrentPosition = new LatLng(latitude_data, longitude_data);
             }
-            mTcpClient.run();
+            mDjangoClient.run();
 
             return null;
         }
@@ -769,10 +874,28 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 ShieldPlacement.clear();
             }
             ShieldPlacement = parser.parse(stream);
+
+            if (parser.MessageFrom == parser.AGENT_DATA_RESPONSE)
+            {
+                acknowledgeResponderDialog();
+            }
             if (parser.MessageFrom == parser.LOGIN_PASSED_MESSAGE_TYPE)
             {
                 appInfoStore.updateUserDetail(appOperator.RealName, appOperator.RealSurname, appOperator.CurrentRole, appOperator.OperatorId, appOperator.Username);
                 appOperator.CurrentlyLoggedIn = true;
+            }
+
+            if (parser.MessageFrom == parser.AGENT_DATA_FAILED)
+            {
+                Log.e("MapsActivity","--agent data retrieval failed");
+            }
+            if (ShieldPlacement.size() > 0)
+            {
+                runShieldPlacement();
+            }
+            else
+            {
+                Log.e("MapsActivity", "--response incorrect");
             }
         }
     }
@@ -851,7 +974,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         {
             ArrayList<LatLng> points = null;
             PolylineOptions lineOptions = null;
-            MarkerOptions markerOptions = new MarkerOptions();
 
             // Traversing through all the routes
             for (int i = 0; i < result.size(); i++)

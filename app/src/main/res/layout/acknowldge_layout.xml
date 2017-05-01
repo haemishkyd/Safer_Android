@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content" >
+
+    <TextView
+        android:id="@+id/instructions_1"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:textColor="@android:color/holo_red_light"
+        android:textSize="20dp"
+        android:text="Acknowledge The Call"/>
+
+    <TextView
+        android:id="@+id/instructions_2"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:textColor="@android:color/holo_red_light"
+        android:textSize="20dp"
+        android:layout_below="@+id/instructions_1"
+        android:text=""/>
+
+    <Button
+        android:id="@+id/acknowledgecall"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="Acknowledge"
+        android:layout_below="@+id/instructions_2"/>
+
+</RelativeLayout>
